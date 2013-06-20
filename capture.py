@@ -1,21 +1,10 @@
 """
-This demo demonstrates how to draw a dynamic mpl (matplotlib) 
-plot in a wxPython application.
 
-It allows "live" plotting as well as manual zooming to specific
-regions.
-
-Both X and Y axes allow "auto" or "manual" settings. For Y, auto
-mode sets the scaling of the graph to see all the data points.
-For X, auto mode makes the graph "follow" the data. Set it X min
-to manual 0 to always see the whole data from the beginning.
-
-Note: press Enter in the 'manual' text box to make a new value 
-affect the plot.
-
-Eli Bendersky (eliben@gmail.com)
+Data analysis Gui for csv data
+Author: Lovisa Irpa Helgadottir
 License: this code is in the public domain
-Last modified: 31.07.2008
+
+Last modified: 20.06.2013
 """
 import os
 import pprint
@@ -24,9 +13,7 @@ import sys
 import wx
 
 import csv
-# The recommended way to use wx with mpl is with the WXAgg
-# backend. 
-#
+
 import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
@@ -109,6 +96,7 @@ class GraphFrame(wx.Frame):
         self.paused = True
         self.xaxis=None
         self.yaxis = []
+
               
         self.create_menu()
         self.create_status_bar()
@@ -145,7 +133,6 @@ class GraphFrame(wx.Frame):
         
         self.pause_button = wx.Button(self.panel, -1, "Plot")
         self.Bind(wx.EVT_BUTTON, self.on_pause_button, self.pause_button)
-        self.Bind(wx.EVT_UPDATE_UI, self.on_update_pause_button, self.pause_button)
         
         
         
@@ -169,8 +156,7 @@ class GraphFrame(wx.Frame):
        
 
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
-        self.hbox1.Add(self.pause_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox1.AddSpacer(20)
+
         self.hbox1.Add(self.cb_grid, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(10)
         self.hbox1.Add(self.cb_xlab, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
@@ -212,23 +198,30 @@ class GraphFrame(wx.Frame):
         self.hbox4.Add(wx.StaticText(self.panel, -1, 'Data To Plot: '),border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.Add(wx.Button(self.panel, 14, 'X axis'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.Add(wx.Button(self.panel, 15, 'Y axis'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-
+        self.hbox4.Add(wx.Button(self.panel, 16, 'Find ID'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        
         self.Bind (wx.EVT_BUTTON, self.OnAdd, id=10)
         self.Bind (wx.EVT_BUTTON, self.OnRemove, id=11)
         self.Bind (wx.EVT_BUTTON, self.OnClear, id=12)
         self.Bind (wx.EVT_BUTTON, self.OnLoadData, id=13)
         self.Bind (wx.EVT_BUTTON, self.OnXSelect, id=14)
         self.Bind (wx.EVT_BUTTON, self.OnYSelect, id=15)
+        self.Bind (wx.EVT_BUTTON, self.OnFindID, id=16)
         self.Bind(wx.EVT_LISTBOX, self.OnSelect, self.lb1)
         
         
-        
+        self.lc1 = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT)
+        self.lc1.InsertColumn(0, 'IDs')
+        self.hbox5 = wx.BoxSizer(wx.HORIZONTAL)    
+        self.hbox5.Add(self.lc1,1, wx.ALIGN_LEFT |wx.ALIGN_CENTER_VERTICAL,2)
+        self.hbox5.Add(self.pause_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP | wx.GROW)        
 
         self.vbox.Add(self.hbox3, 0, flag=wx.EXPAND | wx.TOP)
         self.vbox.Add(self.hbox4, 0, flag=wx.ALIGN_LEFT | wx.TOP)
-#         self.vbox.Add(self.hbox5, 0, flag=wx.ALIGN_LEFT | wx.TOP)
+        self.vbox.Add(self.hbox5, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.vbox.Add(self.hbox2, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
 
@@ -252,6 +245,7 @@ class GraphFrame(wx.Frame):
 
     def OnClear(self, event):
         self.lc.DeleteAllItems()
+        self.__init__
     
     def OnSelect(self, event):
         index = event.GetSelection()
@@ -270,19 +264,24 @@ class GraphFrame(wx.Frame):
         for i in xrange(self.datalength):
             names.append(self.lc.GetItem(i,0).GetText())
             formats.append(self.formats_list[self.lc.GetItem(i,1).GetText()])
-        print formats
+
 
         dt = np.dtype({'names':names,
              'formats':formats})
         self.data=np.loadtxt(self.file,dt,delimiter=',')
+
  
     
     
     def OnXSelect(self,event):
         index = self.lc.GetFocusedItem()
          
-        if(self.lc.GetItem(index,2).GetText!="X axis"):
+        if(self.lc.GetItem(index,2).GetText()!="X axis"):
             self.lc.SetStringItem(index,2,"X axis")
+        else:
+            self.lc.SetStringItem(index,2,"")
+            self.xaxis=None
+            return
              
         if(self.xaxis):
             self.lc.SetStringItem(self.xaxis-1,2,"")
@@ -292,18 +291,22 @@ class GraphFrame(wx.Frame):
     
     def OnYSelect(self,event):
         index = self.lc.GetFocusedItem()
-        if(self.lc.GetItem(index,2).GetText =="Y axis"):
-            pass
+        if(self.lc.GetItem(index,2).GetText() =="Y axis"):
+            self.lc.SetStringItem(index,2,"")
+            self.yaxis.remove(index)        
         else:
             self.lc.SetStringItem(index,2,"Y axis")
             self.yaxis.append(index)
-
-        
-        
             
-
     
-    
+    def OnFindID(self,event):
+        index = self.lc.GetFocusedItem()
+        unique_id= set(self.data[self.lc.GetItem(index,0).GetText()])
+        for i in xrange(len(unique_id)):
+            num_items = self.lc1.GetItemCount()
+            self.lc1.InsertStringItem(num_items, unique_id.pop())
+            
+                
     def create_status_bar(self):
         self.statusbar = self.CreateStatusBar()
 
@@ -318,9 +321,6 @@ class GraphFrame(wx.Frame):
         pylab.setp(self.axes.get_xticklabels(), fontsize=8)
         pylab.setp(self.axes.get_yticklabels(), fontsize=8)
 
-        # plot the data as a line series, and save the reference 
-        # to the plotted line series
-        #
         self.plot_data = self.axes.plot(
             self.data, 
             linewidth=1,
@@ -330,12 +330,14 @@ class GraphFrame(wx.Frame):
     def draw_plot(self):
         """ Draws the plot
         """
-        ydata=self.data[self.lc.GetItem(self.yaxis[0],0).GetText()]
+
+        self.axes.clear()
+
         
         if(self.xaxis):
             xdata = self.data[self.lc.GetItem(self.xaxis,0).GetText()]
         else:
-            xdata= np.arange(len(ydata))
+            xdata= np.arange(len(self.data))
 
 
         if self.xmax_control.is_auto():
@@ -348,31 +350,20 @@ class GraphFrame(wx.Frame):
         else:
             xmin = int(self.xmin_control.manual_value())
 
-        # for ymin and ymax, find the minimal and maximal values
-        # in the data set and add a mininal margin.
-        # 
-        # note that it's easy to change this scheme to the 
-        # minimal/maximal value in the current display, and not
-        # the whole data set.
-        # 
+
         if self.ymin_control.is_auto():
-            ymin = round(min(ydata), 0) - 1
+            ymin = 0
         else:
             ymin = int(self.ymin_control.manual_value())
         
         if self.ymax_control.is_auto():
-            ymax = round(max(ydata), 0) + 1
+            ymax = 1000
         else:
             ymax = int(self.ymax_control.manual_value())
 
         self.axes.set_xbound(lower=xmin, upper=xmax)
         self.axes.set_ybound(lower=ymin, upper=ymax)
         
-        # anecdote: axes.grid assumes b=True if any other flag is
-        # given even if b is set to False.
-        # so just passing the flag into the first statement won't
-        # work.
-        #
         if self.cb_grid.IsChecked():
             self.axes.grid(True, color='gray')
         else:
@@ -382,26 +373,21 @@ class GraphFrame(wx.Frame):
             self.axes.set_title(self.filename, size=12)
         else :  
             self.axes.set_title("")
-        # Using setp here is convenient, because get_xticklabels
-        # returns a list over which one needs to explicitly 
-        # iterate, and setp already handles this.
-        #  
+
         pylab.setp(self.axes.get_xticklabels(), 
             visible=self.cb_xlab.IsChecked())
         
-        self.plot_data.set_xdata(xdata)
-        self.plot_data.set_ydata(ydata)
+
+        for i in xrange(len(self.yaxis)):
+            self.axes.plot(xdata, self.data[self.lc.GetItem(self.yaxis[i],0).GetText()])
         
         self.canvas.draw()
+  
+  
     
     def on_pause_button(self, event):
-        self.paused = not self.paused
-        if self.paused == False:
-            self.draw_plot()
+         self.draw_plot()
     
-    def on_update_pause_button(self, event):
-        label = "Plot" if self.paused else "Pause"
-        self.pause_button.SetLabel(label)
     
     def on_cb_grid(self, event):
         self.draw_plot()
@@ -424,6 +410,13 @@ class GraphFrame(wx.Frame):
             self.datalength = len(next(csv.reader(self.file, delimiter=',')))
             self.openfile = True
             self.flash_status_message("Opened  %s" % self.filename)
+            
+            self.popupmenu()
+            
+    
+    def popupmenu(self):
+        pass
+    
 
              
     def on_save_plot(self, event):
@@ -466,20 +459,7 @@ if __name__ == '__main__':
     app.MainLoop()
 
 
-# plt.figure(1)
-#   
-# f=open('capture.txt')
-# 
-# dt=np.dtype({'names':['ID','millisec','wantedHeadPos', 'BallPosX', 'BallPosY', 'GoalPosX','GoalPosY'],
-#              'formats':['S100',np.float,np.float,np.float,np.float,np.float,np.float]})
-# 
-# data=np.loadtxt(f,dtype=dt,delimiter=',')
-# 
-# time = data['millisec']
-# 
-# plt.plot(time,data['wantedHeadPos'])
-# plt.plot(time,data['BallPosX'])
-# plt.plot(time,data['GoalPosX'])
+
 # 
 # plt.plot([time[i] for i in xrange(np.size(data['ID'])) if data['ID'][i] == 'Goal'],
 #          [510 for i in data['ID'] if i == 'Goal'],'b+')
