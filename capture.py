@@ -13,7 +13,6 @@ import sys
 import wx
 
 import csv
-
 import matplotlib
 matplotlib.use('WXAgg')
 from matplotlib.figure import Figure
@@ -23,6 +22,22 @@ from matplotlib.backends.backend_wxagg import \
 import numpy as np
 import pylab
 
+
+class PopUpBox(wx.Frame):
+    def __init__(self,parent,label):
+        wx.Frame.__init__(self, parent, -1, label)
+        self.panel = wx.Panel(self, -1, style=wx.SIMPLE_BORDER)
+        self.vbox = wx.BoxSizer(wx.VERTICAL)
+        
+    def create_panel(self):    
+        self.panel.SetSizer(self.vbox)
+        self.vbox.Fit(self)
+    
+    def on_exit(self, event):
+        self.Destroy()
+        
+        
+    
 
 class BoundControlBox(wx.Panel):
     """ A static box with a couple of radio buttons and a text
@@ -114,9 +129,7 @@ class GraphFrame(wx.Frame):
         self.xmax_control = BoundControlBox(self.panel, -1, "X max", 1000)
         self.ymin_control = BoundControlBox(self.panel, -1, "Y min", 0)
         self.ymax_control = BoundControlBox(self.panel, -1, "Y max", 1000)
-        
-
-        
+              
         self.plot_button = wx.Button(self.panel, -1, "Plot")
         self.Bind(wx.EVT_BUTTON, self.OnPause, self.plot_button)
            
@@ -131,6 +144,10 @@ class GraphFrame(wx.Frame):
         self.cb_title = wx.CheckBox(self.panel, -1, "Show Title",style=wx.ALIGN_RIGHT)
         self.Bind(wx.EVT_CHECKBOX, self.on_cb_title, self.cb_title)        
         self.cb_title.SetValue(False)
+        
+        self.cb_bg= wx.CheckBox(self.panel, -1, "Toggle Background", style=wx.ALIGN_RIGHT)
+        self.Bind(wx.EVT_CHECKBOX, self.on_cb_bg, self.cb_bg)        
+        self.cb_bg.SetValue(True) 
        
 
         self.hbox1 = wx.BoxSizer(wx.HORIZONTAL)
@@ -139,6 +156,8 @@ class GraphFrame(wx.Frame):
         self.hbox1.Add(self.cb_xlab, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox1.AddSpacer(10)
         self.hbox1.Add(self.cb_title, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        self.hbox1.AddSpacer(10)
+        self.hbox1.Add(self.cb_bg, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         
         self.hbox2 = wx.BoxSizer(wx.HORIZONTAL)
         self.hbox2.Add(self.xmin_control, border=5, flag=wx.ALL)
@@ -151,50 +170,33 @@ class GraphFrame(wx.Frame):
         self.lc.InsertColumn(0, 'Parameter')
         self.lc.InsertColumn(1, 'Format')
         self.lc.InsertColumn(2, 'Plot')
-
+        
+        self.lc1 = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT)
+        self.lc1.InsertColumn(0, 'IDs')
+        
         self.hbox3 = wx.BoxSizer(wx.HORIZONTAL)
-        self.tc1 = wx.TextCtrl(self.panel, -1)
-        self.lb1 = wx.ListBox(self.panel, -1, wx.DefaultPosition, (170, 20), ['String','Int','Float'], wx.LB_SINGLE)
-        self.hbox3.AddMany([ (wx.StaticText(self.panel, -1, 'Parameter'),0, wx.ALIGN_CENTER_VERTICAL),
-                        (self.tc1, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL),
-                        (self.lb1,0, wx.ALIGN_CENTER_VERTICAL),
-                        (self.lc,1, wx.ALIGN_LEFT |wx.ALIGN_CENTER_VERTICAL,2)])
+        self.hbox3.Add(self.lc,1, wx.ALIGN_LEFT |wx.ALIGN_CENTER_VERTICAL,2)
+        self.hbox3.Add(self.lc1,1, wx.ALIGN_LEFT |wx.ALIGN_CENTER_VERTICAL,2)
         
         self.hbox4 = wx.BoxSizer(wx.HORIZONTAL)      
-        self.hbox4.Add(wx.Button(self.panel, 10, 'Add'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox4.Add(wx.Button(self.panel, 11, 'Remove'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox4.Add(wx.Button(self.panel, 12, 'Clear'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        self.hbox4.Add(wx.Button(self.panel, 13, 'Load Data'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.AddSpacer(20)
         self.hbox4.Add(wx.StaticText(self.panel, -1, 'Data To Plot: '),border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.Add(wx.Button(self.panel, 14, 'X axis'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.Add(wx.Button(self.panel, 15, 'Y axis'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.hbox4.Add(wx.Button(self.panel, 16, 'Find ID'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        
-        self.Bind (wx.EVT_BUTTON, self.OnAdd, id=10)
-        self.Bind (wx.EVT_BUTTON, self.OnRemove, id=11)
-        self.Bind (wx.EVT_BUTTON, self.OnClear, id=12)
-        self.Bind (wx.EVT_BUTTON, self.OnLoadData, id=13)
+        self.hbox4.Add(self.plot_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)       
+
+
         self.Bind (wx.EVT_BUTTON, self.OnXSelect, id=14)
         self.Bind (wx.EVT_BUTTON, self.OnYSelect, id=15)
         self.Bind (wx.EVT_BUTTON, self.OnFindID, id=16)
-        self.Bind(wx.EVT_LISTBOX, self.OnSelect, self.lb1)
-        
-        
-        self.lc1 = wx.ListCtrl(self.panel, -1, style=wx.LC_REPORT)
-        self.lc1.InsertColumn(0, 'IDs')
-        self.hbox5 = wx.BoxSizer(wx.HORIZONTAL)    
-        self.hbox5.Add(self.lc1,1, wx.ALIGN_LEFT |wx.ALIGN_CENTER_VERTICAL,2)
-        self.hbox5.Add(self.plot_button, border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.Bind(wx.EVT_LIST_ITEM_SELECTED, self.OnSelectID, self.lc1)
         
         
         self.vbox = wx.BoxSizer(wx.VERTICAL)
         self.vbox.Add(self.canvas, 1, flag=wx.LEFT | wx.TOP | wx.GROW)        
-
         self.vbox.Add(self.hbox3, 0, flag=wx.EXPAND | wx.TOP)
         self.vbox.Add(self.hbox4, 0, flag=wx.ALIGN_LEFT | wx.TOP)
-        self.vbox.Add(self.hbox5, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.vbox.Add(self.hbox2, 0, flag=wx.ALIGN_LEFT | wx.TOP)
         self.vbox.Add(self.hbox1, 0, flag=wx.ALIGN_LEFT | wx.TOP)
 
@@ -212,6 +214,7 @@ class GraphFrame(wx.Frame):
         self.fig = Figure((3.0, 3.0), dpi=self.dpi)
 
         self.axes = self.fig.add_subplot(111)
+
         self.axes.set_axis_bgcolor('black')
 
         
@@ -226,25 +229,28 @@ class GraphFrame(wx.Frame):
 
 
     def draw_plot(self):
-        """ Draws the plot
+        """ 
+        Draws the plot
         """
+        if self.filename == None:
+            self.flash_status_message("No file loaded in workspace")
+            return
 
         self.axes.clear()
-
         
         if(self.xaxis):
-            xdata = self.data[self.lc.GetItem(self.xaxis,0).GetText()]
+            xdata = self.data[self.lc.GetItem(self.xaxis-1,0).GetText()]
         else:
             xdata= np.arange(len(self.data))
 
 
         if self.xmax_control.is_auto():
-            xmax = len(xdata) if len(xdata) < 1000 else 1000
+            xmax = np.max(xdata) 
         else:
             xmax = int(self.xmax_control.manual_value())
             
         if self.xmin_control.is_auto():            
-            xmin = xmax - 1000 if len(xdata)>1000 else 0;
+            xmin =  0;
         else:
             xmin = int(self.xmin_control.manual_value())
 
@@ -272,22 +278,120 @@ class GraphFrame(wx.Frame):
             self.axes.set_title(self.filename, size=12)
         else :  
             self.axes.set_title("")
+            
+        if self.cb_bg.IsChecked():
+            self.axes.set_axis_bgcolor('black')
+        else:
+            self.axes.set_axis_bgcolor('white')
 
-        pylab.setp(self.axes.get_xticklabels(), 
-            visible=self.cb_xlab.IsChecked())
+        pylab.setp(self.axes.get_xticklabels(), visible=self.cb_xlab.IsChecked())
         
 
         for i in xrange(len(self.yaxis)):
-            self.axes.plot(xdata, self.data[self.lc.GetItem(self.yaxis[i],0).GetText()])
+            self.axes.plot(xdata, self.data[self.lc.GetItem(self.yaxis[i],0).GetText()],label=self.lc.GetItem(self.yaxis[i],0).GetText())
         
 
         if(self.id!=None):
             for i in self.selcted_ids:
                 index = self.lc.GetItem(self.id,0).GetText()
                 self.axes.plot([xdata[j] for j in xrange(np.size(self.data[index])) if self.data[index][j] == self.lc1.GetItem(i,0).GetText()],
-                               [ymax/2 for j in self.data[index] if j == self.lc1.GetItem(i,0).GetText()],'+')
+                               [ymax/2 for j in self.data[index] if j == self.lc1.GetItem(i,0).GetText()],'+',
+                               label = self.lc1.GetItem(i,0).GetText())
+        
+        self.axes.legend(bbox_to_anchor=(1., 1), loc=2, borderaxespad=0.,prop={'size':8})
 
         self.canvas.draw()
+ 
+    """
+    Menu functions
+    """               
+    def on_open_data(self,event):
+        self.dirname=os.getcwd()
+        file_choices = "Text (*.txt)|*.txt"
+        dlg = wx.FileDialog(self, 'Choose a file', self.dirname, '',
+                            'TXT files (*.txt)|*.txt|CSV files (*.csv)|*.csv|All files(*.*)|*.*'
+                            ,wx.OPEN) 
+        if dlg.ShowModal() == wx.ID_OK:
+            self.dirname=dlg.GetDirectory() 
+            self.filename=os.path.join(self.dirname,dlg.GetFilename()) 
+            
+
+
+            self.file=open(self.filename, 'r') 
+            self.datalength = len(next(csv.reader(self.file, delimiter=',')))
+            self.flash_status_message("Opened  %s" % self.filename)
+            self.open_popupbox_panel()
+
+            
+    
+    def open_popupbox_panel(self):
+        self.popup = PopUpBox(self,"Set Parameters")
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        self.cb_param=wx.CheckBox(self.popup.panel, -1, "Use First Line", style=wx.ALIGN_RIGHT)
+        self.Bind(wx.EVT_CHECKBOX, self.on_cb_param, self.cb_param)        
+        self.cb_param.SetValue(False) 
+        
+        self.tc1 = wx.TextCtrl(self.popup.panel, -1)
+        self.lb1 = wx.ListBox(self.popup.panel, -1, wx.DefaultPosition, (170, 20), ['String','Int','Float'], wx.LB_SINGLE)
+        hbox.AddMany([(self.cb_param, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL),
+                            (wx.StaticText(self.popup.panel, -1, 'Parameter'),0, wx.ALIGN_CENTER_VERTICAL),
+                            (self.tc1, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL),
+                            (self.lb1,0, wx.ALIGN_CENTER_VERTICAL)])
+        
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)      
+        hbox1.Add(wx.Button(self.popup.panel, 10, 'Add'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.popup.panel, 11, 'Remove'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.popup.panel, 12, 'Clear'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.popup.panel, 13, 'Load Data'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        self.Bind (wx.EVT_BUTTON, self.OnAdd, id=10)
+        self.Bind (wx.EVT_BUTTON, self.OnRemove, id=11)
+        self.Bind (wx.EVT_BUTTON, self.OnClear, id=12)
+        self.Bind(wx.EVT_LISTBOX, self.OnSelect, self.lb1)
+        self.Bind (wx.EVT_BUTTON, self.OnLoadData, id=13)
+        self.popup.vbox.Add(hbox, 0, flag=wx.EXPAND | wx.TOP)
+        self.popup.vbox.Add(hbox1, 0, flag=wx.EXPAND | wx.TOP)
+        self.popup.create_panel()
+        self.popup.Show()
+    
+    
+    def auto_set_param(self):
+        file = open(self.filename)
+        header = file.readline().split(',')
+        format=np.genfromtxt(file, delimiter=",")
+    
+        for h in xrange(len(header)): 
+             num_items = self.lc.GetItemCount()
+             self.lc.InsertStringItem(num_items, header[h])
+             if np.isnan(format[0,h]):
+                 self.lc.SetStringItem(num_items, 1, "String")
+             else:
+                 self.lc.SetStringItem(num_items, 1, "Float")                       
+        file.close()
+            
+           
+    def on_save_plot(self, event):
+        file_choices = "PNG (*.png)|*.png"
+        
+        dlg = wx.FileDialog( self, message="Save plot as...", defaultDir=os.getcwd(),
+                             defaultFile="plot.png",wildcard=file_choices,style=wx.SAVE)
+        
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            self.canvas.print_figure(path, dpi=self.dpi)
+            self.flash_status_message("Saved to %s" % path)
+    
+    
+    def on_exit(self, event):
+        self.Destroy()
+    
+    def flash_status_message(self, msg, flash_len_ms=1500):
+        self.statusbar.SetStatusText(msg)
+        self.timeroff = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_flash_status_off, self.timeroff)
+        self.timeroff.Start(flash_len_ms, oneShot=True)
+    
+    def on_flash_status_off(self, event):
+        self.statusbar.SetStatusText('') 
   
     """
     Button functions
@@ -307,34 +411,36 @@ class GraphFrame(wx.Frame):
 
     def OnClear(self, event):
         self.lc.DeleteAllItems()
+        self.file.close()
         self.__init__
     
     def OnSelect(self, event):
         index = event.GetSelection()
         self.format = self.lb1.GetString(index)
 
-
     def OnLoadData(self,event):
         if self.filename == None:
             self.flash_status_message("No Data File open")
             return
-        
+              
         if self.datalength != self.lc.GetItemCount():
             self.flash_status_message("Data has %d columns. Please define all parameters " % self.datalength)
             return
-        
+               
         names  =[]
         formats =[]
         for i in xrange(self.datalength):
             names.append(self.lc.GetItem(i,0).GetText())
             formats.append(self.formats_list[self.lc.GetItem(i,1).GetText()])
 
-        dt = np.dtype({'names':names,
-             'formats':formats})
-        self.data=np.loadtxt(self.file,dt,delimiter=',')
-
- 
-  
+        dt = np.dtype({'names':names,'formats':formats})
+        
+        try:
+             self.data=np.loadtxt(self.file,dt,delimiter=',')
+             self.popup.on_exit(event)
+        except:
+            self.flash_status_message("Error Loading Data" )
+              
     
     def OnXSelect(self,event):
         index = self.lc.GetFocusedItem()
@@ -380,8 +486,7 @@ class GraphFrame(wx.Frame):
     
     def OnPause(self, event):
          self.draw_plot()
-    
-    
+       
     def on_cb_grid(self, event):
         self.draw_plot()
     
@@ -390,54 +495,20 @@ class GraphFrame(wx.Frame):
 
     def on_cb_title(self, event):
         self.draw_plot()
+    
+    def on_cb_bg(self,event):
+        self.draw_plot()
+        
+    def on_cb_param(self,event):
+        self.tc1.Enable(not self.cb_param.IsChecked())
+        self.lb1.Enable(not self.cb_param.IsChecked())
+        if self.cb_param.IsChecked():
+            self.auto_set_param()
+        else:
+            self.lc.DeleteAllItems()
  
  
-    """
-    Menu functions
-    """               
-    def on_open_data(self,event):
-        self.dirname=os.getcwd()
-        file_choices = "Text (*.txt)|*.txt"
-        dlg = wx.FileDialog(self, 'Choose a file', self.dirname, '',
-                            'TXT files (*.txt)|*.txt|CSV files (*.csv)|*.csv|All files(*.*)|*.*'
-                            ,wx.OPEN) 
-        if dlg.ShowModal() == wx.ID_OK:
-            self.dirname=dlg.GetDirectory() 
-            self.filename=os.path.join(self.dirname,dlg.GetFilename()) 
-            self.file=file(self.filename, 'r') 
-            self.datalength = len(next(csv.reader(self.file, delimiter=',')))
-            self.flash_status_message("Opened  %s" % self.filename)
-            
-            self.popupmenu()
-            
-    
-    def popupmenu(self):
-        pass
-    
-           
-    def on_save_plot(self, event):
-        file_choices = "PNG (*.png)|*.png"
-        
-        dlg = wx.FileDialog( self, message="Save plot as...", defaultDir=os.getcwd(),
-                             defaultFile="plot.png",wildcard=file_choices,style=wx.SAVE)
-        
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            self.canvas.print_figure(path, dpi=self.dpi)
-            self.flash_status_message("Saved to %s" % path)
-    
-    
-    def on_exit(self, event):
-        self.Destroy()
-    
-    def flash_status_message(self, msg, flash_len_ms=1500):
-        self.statusbar.SetStatusText(msg)
-        self.timeroff = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.on_flash_status_off, self.timeroff)
-        self.timeroff.Start(flash_len_ms, oneShot=True)
-    
-    def on_flash_status_off(self, event):
-        self.statusbar.SetStatusText('')
+
 
 
 if __name__ == '__main__':
