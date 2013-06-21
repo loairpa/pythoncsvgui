@@ -113,8 +113,14 @@ class GraphFrame(wx.Frame):
         menu_file.AppendSeparator()
         m_exit = menu_file.Append(-1, "E&xit\tCtrl-X", "Exit")
         self.Bind(wx.EVT_MENU, self.on_exit, m_exit)
+        
+        menu_edit = wx.Menu()
+        m_label = menu_edit.Append(-1, "Edit Labels","Edit Labels")
+        self.Bind(wx.EVT_MENU, self.on_edit_label, m_label)
+
                 
         self.menubar.Append(menu_file, "&File")
+        self.menubar.Append(menu_edit,"&Edit")
         self.SetMenuBar(self.menubar)
 
 
@@ -131,7 +137,7 @@ class GraphFrame(wx.Frame):
         self.ymax_control = BoundControlBox(self.panel, -1, "Y max", 1000)
               
         self.plot_button = wx.Button(self.panel, -1, "Plot")
-        self.Bind(wx.EVT_BUTTON, self.OnPause, self.plot_button)
+        self.Bind(wx.EVT_BUTTON, self.OnPlot, self.plot_button)
            
         self.cb_grid = wx.CheckBox(self.panel, -1, "Show Grid",style=wx.ALIGN_RIGHT)
         self.Bind(wx.EVT_CHECKBOX, self.on_cb_grid, self.cb_grid)
@@ -299,6 +305,8 @@ class GraphFrame(wx.Frame):
                                label = self.lc1.GetItem(i,0).GetText())
         
         self.axes.legend(bbox_to_anchor=(1., 1), loc=2, borderaxespad=0.,prop={'size':8})
+        self.axes.set_xlabel(self.xlabel)
+        self.axes.set_ylabel(self.ylabel)
 
         self.canvas.draw()
  
@@ -325,33 +333,33 @@ class GraphFrame(wx.Frame):
             
     
     def open_popupbox_panel(self):
-        self.popup = PopUpBox(self,"Set Parameters")
+        self.parm_popup = PopUpBox(self,"Set Parameters")
         hbox = wx.BoxSizer(wx.HORIZONTAL)
-        self.cb_param=wx.CheckBox(self.popup.panel, -1, "Use First Line", style=wx.ALIGN_RIGHT)
+        self.cb_param=wx.CheckBox(self.parm_popup.panel, -1, "Use First Line", style=wx.ALIGN_RIGHT)
         self.Bind(wx.EVT_CHECKBOX, self.on_cb_param, self.cb_param)        
         self.cb_param.SetValue(False) 
         
-        self.tc1 = wx.TextCtrl(self.popup.panel, -1)
-        self.lb1 = wx.ListBox(self.popup.panel, -1, wx.DefaultPosition, (170, 20), ['String','Int','Float'], wx.LB_SINGLE)
+        self.tc1 = wx.TextCtrl(self.parm_popup.panel, -1)
+        self.lb1 = wx.ListBox(self.parm_popup.panel, -1, wx.DefaultPosition, (170, 20), ['String','Int','Float'], wx.LB_SINGLE)
         hbox.AddMany([(self.cb_param, 0, wx.ALL | wx.ALIGN_CENTER_VERTICAL),
-                            (wx.StaticText(self.popup.panel, -1, 'Parameter'),0, wx.ALIGN_CENTER_VERTICAL),
+                            (wx.StaticText(self.parm_popup.panel, -1, 'Parameter'),0, wx.ALIGN_CENTER_VERTICAL),
                             (self.tc1, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL),
                             (self.lb1,0, wx.ALIGN_CENTER_VERTICAL)])
         
         hbox1 = wx.BoxSizer(wx.HORIZONTAL)      
-        hbox1.Add(wx.Button(self.popup.panel, 10, 'Add'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        hbox1.Add(wx.Button(self.popup.panel, 11, 'Remove'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        hbox1.Add(wx.Button(self.popup.panel, 12, 'Clear'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
-        hbox1.Add(wx.Button(self.popup.panel, 13, 'Load Data'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.parm_popup.panel, 10, 'Add'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.parm_popup.panel, 11, 'Remove'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.parm_popup.panel, 12, 'Clear'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        hbox1.Add(wx.Button(self.parm_popup.panel, 13, 'Load Data'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
         self.Bind (wx.EVT_BUTTON, self.OnAdd, id=10)
         self.Bind (wx.EVT_BUTTON, self.OnRemove, id=11)
         self.Bind (wx.EVT_BUTTON, self.OnClear, id=12)
         self.Bind(wx.EVT_LISTBOX, self.OnSelect, self.lb1)
         self.Bind (wx.EVT_BUTTON, self.OnLoadData, id=13)
-        self.popup.vbox.Add(hbox, 0, flag=wx.EXPAND | wx.TOP)
-        self.popup.vbox.Add(hbox1, 0, flag=wx.EXPAND | wx.TOP)
-        self.popup.create_panel()
-        self.popup.Show()
+        self.parm_popup.vbox.Add(hbox, 0, flag=wx.EXPAND | wx.TOP)
+        self.parm_popup.vbox.Add(hbox1, 0, flag=wx.EXPAND | wx.TOP)
+        self.parm_popup.create_panel()
+        self.parm_popup.Show()
     
     
     def auto_set_param(self):
@@ -383,6 +391,38 @@ class GraphFrame(wx.Frame):
     
     def on_exit(self, event):
         self.Destroy()
+        
+    def on_edit_label(self,event):
+        self.edit_popup_panel()
+
+        
+    def edit_popup_panel(self):
+        
+        def OK(event):
+            self.xlabel=x.GetValue()
+            self.ylabel=y.GetValue()
+            self.draw_plot()         
+            label_popup.on_exit(event)
+            
+        label_popup=PopUpBox(self,"Edit Labels")
+        hbox = wx.BoxSizer(wx.HORIZONTAL)
+        
+        
+        x = wx.TextCtrl(label_popup.panel, -1)
+        y =wx.TextCtrl(label_popup.panel, -1)
+        hbox.AddMany([(wx.StaticText(label_popup.panel, -1, 'X label'),0, wx.ALIGN_CENTER_VERTICAL),
+                      (x, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL),
+                      (wx.StaticText(label_popup.panel, -1, 'Y label'),0, wx.ALIGN_CENTER_VERTICAL),
+                      (y,0, wx.ALIGN_CENTER_VERTICAL)])
+        
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)      
+        hbox1.Add(wx.Button(label_popup.panel, 20, 'OK'), border=5, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL)
+        self.Bind(wx.EVT_BUTTON, OK, id=20)
+
+        label_popup.vbox.Add(hbox, 0, flag=wx.EXPAND | wx.TOP)
+        label_popup.vbox.Add(hbox1, 0, flag=wx.EXPAND | wx.TOP)
+        label_popup.create_panel()
+        label_popup.Show()
     
     def flash_status_message(self, msg, flash_len_ms=1500):
         self.statusbar.SetStatusText(msg)
@@ -437,7 +477,7 @@ class GraphFrame(wx.Frame):
         
         try:
              self.data=np.loadtxt(self.file,dt,delimiter=',')
-             self.popup.on_exit(event)
+             self.parm_popup.on_exit(event)
         except:
             self.flash_status_message("Error Loading Data" )
               
@@ -484,7 +524,7 @@ class GraphFrame(wx.Frame):
         else:
             self.selcted_ids.remove(index) 
     
-    def OnPause(self, event):
+    def OnPlot(self, event):
          self.draw_plot()
        
     def on_cb_grid(self, event):
