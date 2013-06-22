@@ -96,6 +96,9 @@ class GraphFrame(wx.Frame):
         self.yaxis = []
         self.id = None
         self.selcted_ids = []
+        
+        self.xlabel=""
+        self.ylabel=""
 
               
         self.create_menu()
